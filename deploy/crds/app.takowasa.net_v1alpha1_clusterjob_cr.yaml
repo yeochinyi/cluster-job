@@ -1,0 +1,7 @@
+apiVersion: app.takowasa.net/v1alpha1
+kind: ClusterJob
+metadata:
+  name: example-clusterjob
+spec:
+  # Add fields here
+  size: 3
