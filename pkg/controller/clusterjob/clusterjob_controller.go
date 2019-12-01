@@ -4,6 +4,7 @@ import (
 	"context"
 
 	appv1alpha1 "github.com/yeochinyi/cluster-job/pkg/apis/app/v1alpha1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +54,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner ClusterJob
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &appv1alpha1.ClusterJob{},
 	})
@@ -130,11 +131,11 @@ func (r *ReconcileClusterJob) Reconcile(request reconcile.Request) (reconcile.Re
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *appv1alpha1.ClusterJob) *corev1.Pod {
+func newPodForCR(cr *appv1alpha1.ClusterJob) *batchv1.Job {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &corev1.Pod{
+	return &batchv1.Jobe{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name + "-pod",
 			Namespace: cr.Namespace,
