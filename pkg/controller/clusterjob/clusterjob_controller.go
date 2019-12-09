@@ -135,20 +135,64 @@ func newPodForCR(cr *appv1alpha1.ClusterJob) *batchv1.Job {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &batchv1.Jobe{
+	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
+			Name:      cr.Name + "-job",
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
+		Spec: batchv1.JobSpec{
+			Parallelism:             nil,
+			Completions:             nil,
+			ActiveDeadlineSeconds:   nil,
+			BackoffLimit:            nil,
+			Selector:                nil,
+			ManualSelector:          nil,
+			Template:                corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{},
+				Spec:       corev1.PodSpec{
+					Volumes:                       nil,
+					InitContainers:                nil,
+					Containers:
+					RestartPolicy:                 "",
+					TerminationGracePeriodSeconds: nil,
+					ActiveDeadlineSeconds:         nil,
+					DNSPolicy:                     "",
+					NodeSelector:                  nil,
+					ServiceAccountName:            "",
+					AutomountServiceAccountToken:  nil,
+					NodeName:                      "",
+					HostNetwork:                   false,
+					HostPID:                       false,
+					HostIPC:                       false,
+					ShareProcessNamespace:         nil,
+					SecurityContext:               nil,
+					ImagePullSecrets:              nil,
+					Hostname:                      "",
+					Subdomain:                     "",
+					Affinity:                      nil,
+					SchedulerName:                 "",
+					Tolerations:                   nil,
+					HostAliases:                   nil,
+					PriorityClassName:             "",
+					Priority:                      nil,
+					DNSConfig:                     nil,
+					ReadinessGates:                nil,
+					RuntimeClassName:              nil,
+					EnableServiceLinks:            nil,
+					PreemptionPolicy:              nil,
 				},
 			},
+			TTLSecondsAfterFinished: nil,
 		},
+		//Spec: corev1.PodSpec{
+		//	Containers: []corev1.Container{
+		//		{
+		//			Name:    "busybox",
+		//			Image:   "busybox",
+		//			Command: []string{"sleep", "3600"},
+		//		},
+		//	},
+		//},
 	}
 }
