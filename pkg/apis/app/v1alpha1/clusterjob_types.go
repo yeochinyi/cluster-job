@@ -14,8 +14,8 @@ type ClusterJobSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// https://github.com/kubernetes/kube-openapi/issues/175
-	// +listType=set
-	JobImages []string `json:"jobImages"`
+	// +listType=map
+	JobImages map[string]string `json:"jobImages"`
 }
 
 // ClusterJobStatus defines the observed state of ClusterJob
@@ -25,9 +25,22 @@ type ClusterJobStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// +k8s:openapi-gen=true
-	Done    bool `json:"done"`
-	Success bool `json:"success"`
+	AllDone        bool                 `json:"allDone"`
+	AllSucceeded   bool                 `json:"allSucceeded"`
+	TotalStarted   uint8                `json:"totalStarted"`
+	TotalSucceeded uint8                `json:"totalSucceeded"`
+	TotalFailed    uint8                `json:"totalFailed"`
+	JobStatuses    map[string]JobStatus `json:"JobStatuses"`
 }
+
+type JobStatus uint8
+
+// kubectl explain jobs.status
+const (
+	ACTIVE    JobStatus = iota
+	SUCCEEDED           = 1
+	FAILED              = 2
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

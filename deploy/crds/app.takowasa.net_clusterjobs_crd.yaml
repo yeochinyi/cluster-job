@@ -32,31 +32,40 @@ spec:
           description: ClusterJobSpec defines the desired state of ClusterJob
           properties:
             jobImages:
+              additionalProperties:
+                type: string
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                 Important: Run "operator-sdk generate k8s" to regenerate code after
                 modifying this file Add custom validation using kubebuilder tags:
                 https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
                 https://github.com/kubernetes/kube-openapi/issues/175'
-              items:
-                type: string
-              type: array
+              type: object
           required:
           - jobImages
           type: object
         status:
           description: ClusterJobStatus defines the observed state of ClusterJob
           properties:
-            done:
+            allDone:
               description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                 of cluster Important: Run "operator-sdk generate k8s" to regenerate
                 code after modifying this file Add custom validation using kubebuilder
                 tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
               type: boolean
-            success:
+            allSucceeded:
               type: boolean
+            totalFailed:
+              type: integer
+            totalStarted:
+              type: integer
+            totalSucceeded:
+              type: integer
           required:
-          - done
-          - success
+          - allDone
+          - allSucceeded
+          - totalFailed
+          - totalStarted
+          - totalSucceeded
           type: object
       type: object
   version: v1alpha1

@@ -74,8 +74,10 @@ func (in *ClusterJobSpec) DeepCopyInto(out *ClusterJobSpec) {
 	*out = *in
 	if in.JobImages != nil {
 		in, out := &in.JobImages, &out.JobImages
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

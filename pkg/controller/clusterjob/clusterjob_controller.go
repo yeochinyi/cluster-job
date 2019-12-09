@@ -2,15 +2,13 @@ package clusterjob
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/types"
-	"strconv"
-
 	appv1alpha1 "github.com/yeochinyi/cluster-job/pkg/apis/app/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -105,9 +103,15 @@ func (r *ReconcileClusterJob) Reconcile(request reconcile.Request) (reconcile.Re
 	// Define a new Pod object
 	jobs := newJobsForCR(instance)
 
+	instance.Status.TotalStarted = uint8(len(jobs))
+	err = r.client.Status().Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update status")
+		return reconcile.Result{}, err
+	}
+
 	// Set ClusterJob instance as the owner and controller
 	for _, job := range jobs {
-		//reqLogger.Info("created job:", job.Name)
 		if err := controllerutil.SetControllerReference(instance, job, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -125,8 +129,26 @@ func (r *ReconcileClusterJob) Reconcile(request reconcile.Request) (reconcile.Re
 			// Pod created successfully - don't requeue
 			return reconcile.Result{}, nil
 		} else if err != nil {
+			// Real Error
 			return reconcile.Result{}, err
 		}
+
+		var status appv1alpha1.JobStatus
+
+		switch {
+		case found.Status.Failed > 0:
+			status = appv1alpha1.FAILED
+		case found.Status.Succeeded > 0:
+			status = appv1alpha1.SUCCEEDED
+		case found.Status.Active > 0:
+			status = appv1alpha1.ACTIVE
+
+		}
+
+		instance.Status.JobStatuses[job.Name] = status
+
+		//found.Status.Failed
+		//found.Status.Active
 
 		//// Pod already exists - don't requeue
 		reqLogger.Info("Skip reconcile: Job already exists", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
@@ -143,11 +165,11 @@ func newJobsForCR(cr *appv1alpha1.ClusterJob) []*batchv1.Job {
 
 	var jobs []*batchv1.Job
 
-	for i, jobImage := range cr.Spec.JobImages {
+	for key, value := range cr.Spec.JobImages {
 
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      cr.Name + "-job",
+				Name:      cr.Name + "-" + key,
 				Namespace: cr.Namespace,
 				Labels:    labels,
 			},
@@ -165,8 +187,8 @@ func newJobsForCR(cr *appv1alpha1.ClusterJob) []*batchv1.Job {
 						InitContainers: nil,
 						Containers: []corev1.Container{
 							{
-								Name:  strconv.Itoa(i),
-								Image: jobImage,
+								Name:  key,
+								Image: value,
 								//Command: []string{"sleep", "3600"},
 							},
 						},

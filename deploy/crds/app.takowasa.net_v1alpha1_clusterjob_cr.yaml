@@ -3,6 +3,6 @@ kind: ClusterJob
 metadata:
   name: example-clusterjob
 spec:
-  # Add fields here
   jobImages:
-    - busybox
+    bb1: busybox
+    bb2: busybox
