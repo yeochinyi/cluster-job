@@ -68,15 +68,27 @@ func schema_pkg_apis_app_v1alpha1_ClusterJobSpec(ref common.ReferenceCallback) c
 				Description: "ClusterJobSpec defines the desired state of ClusterJob",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"jobImage": {
+					"jobImages": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "set",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
-							Description: "INSERT ADDITIONAL SPEC FIELDS - desired state of cluster Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "INSERT ADDITIONAL SPEC FIELDS - desired state of cluster Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html https://github.com/kubernetes/kube-openapi/issues/175",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"jobImage"},
+				Required: []string{"jobImages"},
 			},
 		},
 	}
@@ -89,21 +101,21 @@ func schema_pkg_apis_app_v1alpha1_ClusterJobStatus(ref common.ReferenceCallback)
 				Description: "ClusterJobStatus defines the observed state of ClusterJob",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"jobDone": {
+					"done": {
 						SchemaProps: spec.SchemaProps{
 							Description: "INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
 					},
-					"jobSuccess": {
+					"success": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"boolean"},
 							Format: "",
 						},
 					},
 				},
-				Required: []string{"jobDone", "jobSuccess"},
+				Required: []string{"done", "success"},
 			},
 		},
 	}

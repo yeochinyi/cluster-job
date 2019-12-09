@@ -2,6 +2,8 @@ package clusterjob
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/types"
+	"strconv"
 
 	appv1alpha1 "github.com/yeochinyi/cluster-job/pkg/apis/app/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -9,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -102,97 +103,109 @@ func (r *ReconcileClusterJob) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// Define a new Pod object
-	pod := newPodForCR(instance)
+	jobs := newJobsForCR(instance)
 
 	// Set ClusterJob instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
+	for _, job := range jobs {
+		//reqLogger.Info("created job:", job.Name)
+		if err := controllerutil.SetControllerReference(instance, job, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
+		// Check if this Pod already exists
+		found := &batchv1.Job{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, found)
+		if err != nil && errors.IsNotFound(err) {
+			reqLogger.Info("Creating a new Job", "Pod.Namespace", job.Namespace, "Pod.Name", job.Name)
+			err = r.client.Create(context.TODO(), job)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Pod created successfully - don't requeue
+			return reconcile.Result{}, nil
+		} else if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		//// Pod already exists - don't requeue
+		reqLogger.Info("Skip reconcile: Job already exists", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *appv1alpha1.ClusterJob) *batchv1.Job {
+// newJobForCR returns a busybox pod with the same name/namespace as the cr
+func newJobsForCR(cr *appv1alpha1.ClusterJob) []*batchv1.Job {
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-job",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: batchv1.JobSpec{
-			Parallelism:             nil,
-			Completions:             nil,
-			ActiveDeadlineSeconds:   nil,
-			BackoffLimit:            nil,
-			Selector:                nil,
-			ManualSelector:          nil,
-			Template:                corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{},
-				Spec:       corev1.PodSpec{
-					Volumes:                       nil,
-					InitContainers:                nil,
-					Containers:
-					RestartPolicy:                 "",
-					TerminationGracePeriodSeconds: nil,
-					ActiveDeadlineSeconds:         nil,
-					DNSPolicy:                     "",
-					NodeSelector:                  nil,
-					ServiceAccountName:            "",
-					AutomountServiceAccountToken:  nil,
-					NodeName:                      "",
-					HostNetwork:                   false,
-					HostPID:                       false,
-					HostIPC:                       false,
-					ShareProcessNamespace:         nil,
-					SecurityContext:               nil,
-					ImagePullSecrets:              nil,
-					Hostname:                      "",
-					Subdomain:                     "",
-					Affinity:                      nil,
-					SchedulerName:                 "",
-					Tolerations:                   nil,
-					HostAliases:                   nil,
-					PriorityClassName:             "",
-					Priority:                      nil,
-					DNSConfig:                     nil,
-					ReadinessGates:                nil,
-					RuntimeClassName:              nil,
-					EnableServiceLinks:            nil,
-					PreemptionPolicy:              nil,
-				},
+
+	var jobs []*batchv1.Job
+
+	for i, jobImage := range cr.Spec.JobImages {
+
+		job := &batchv1.Job{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      cr.Name + "-job",
+				Namespace: cr.Namespace,
+				Labels:    labels,
 			},
-			TTLSecondsAfterFinished: nil,
-		},
-		//Spec: corev1.PodSpec{
-		//	Containers: []corev1.Container{
-		//		{
-		//			Name:    "busybox",
-		//			Image:   "busybox",
-		//			Command: []string{"sleep", "3600"},
-		//		},
-		//	},
-		//},
+			Spec: batchv1.JobSpec{
+				Parallelism:           nil,
+				Completions:           nil,
+				ActiveDeadlineSeconds: nil,
+				BackoffLimit:          nil,
+				Selector:              nil,
+				ManualSelector:        nil,
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: corev1.PodSpec{
+						Volumes:        nil,
+						InitContainers: nil,
+						Containers: []corev1.Container{
+							{
+								Name:  strconv.Itoa(i),
+								Image: jobImage,
+								//Command: []string{"sleep", "3600"},
+							},
+						},
+						RestartPolicy:                 corev1.RestartPolicyNever,
+						TerminationGracePeriodSeconds: nil,
+						ActiveDeadlineSeconds:         nil,
+						DNSPolicy:                     "",
+						NodeSelector:                  nil,
+						ServiceAccountName:            "",
+						AutomountServiceAccountToken:  nil,
+						NodeName:                      "",
+						HostNetwork:                   false,
+						HostPID:                       false,
+						HostIPC:                       false,
+						ShareProcessNamespace:         nil,
+						SecurityContext:               nil,
+						ImagePullSecrets:              nil,
+						Hostname:                      "",
+						Subdomain:                     "",
+						Affinity:                      nil,
+						SchedulerName:                 "",
+						Tolerations:                   nil,
+						HostAliases:                   nil,
+						PriorityClassName:             "",
+						Priority:                      nil,
+						DNSConfig:                     nil,
+						ReadinessGates:                nil,
+						RuntimeClassName:              nil,
+						EnableServiceLinks:            nil,
+						PreemptionPolicy:              nil,
+					},
+				},
+				TTLSecondsAfterFinished: nil,
+			},
+		}
+
+		jobs = append(jobs, job)
 	}
+
+	return jobs
+
 }
